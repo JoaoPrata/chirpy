@@ -3,13 +3,17 @@ package main
 import (
     "net/http"
     "encoding/json"
+    "strings"
+    "slices"
 )
+
+var profane = []string {"kerfuffle", "sharbert", "fornax"}
 
 type parameters struct {
     Body string `json:"body"`
 }
 type returnVals struct {
-    Valid bool `json:"valid"`
+    CleanedBody string `json:"cleaned_body"`
 }
 
 type errorResponse struct {
@@ -37,7 +41,7 @@ func (cfg *apiConfig) handlerValidate(w http.ResponseWriter, r *http.Request) {
     if len(params.Body) < 141 {
         w.WriteHeader(http.StatusOK)
         respBody := returnVals{
-            Valid: true,
+            CleanedBody: cleanChirp(params.Body),
         }
         data, err := json.Marshal(respBody)
         if err != nil {
@@ -55,4 +59,14 @@ func (cfg *apiConfig) handlerValidate(w http.ResponseWriter, r *http.Request) {
         }
         w.Write(data)
     }
+}
+
+func cleanChirp(chirp string) string {
+    words := strings.Split(chirp, " ")
+    for idx, word := range words {
+        if slices.Contains(profane, strings.ToLower(word)){
+            words[idx] = "****"
+        } 
+    }
+    return strings.Join(words, " ")
 }
