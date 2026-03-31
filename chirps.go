@@ -66,6 +66,20 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, mapChirps(data))
 }
 
+func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could't parse id", err)
+		return
+	}
+	data, err := cfg.db.GetChirp(r.Context(), id)
+	if err != nil {
+		respondWithJSON(w, http.StatusNotFound, "Could't get chirp")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, mapChirp(data))
+}
+
 func validateChirp(body string) (string, error) {
 	const maxChirpLength = 140
 	if len(body) > maxChirpLength {
@@ -104,4 +118,14 @@ func mapChirps(data []database.Chirp) (chirps []Chirp) {
 		})
 	}
 	return chirps
+}
+
+func mapChirp(data database.Chirp) (chirps Chirp) {
+	return Chirp{
+			ID: data.ID,
+			CreatedAt: data.CreatedAt,
+			UpdatedAt: data.UpdatedAt,
+			UserID: data.UserID,
+			Body: data.Body,
+		}
 }
