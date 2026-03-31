@@ -2,87 +2,84 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/JoaoPrata/chirpy/internal/database"
+	"errors"
 	"net/http"
-	"time"
 	"strings"
-    "slices"
+	"time"
+
+	"github.com/JoaoPrata/chirpy/internal/database"
+	"github.com/google/uuid"
 )
-
-var profane = []string {"kerfuffle", "sharbert", "fornax"}
-
-type chirpParameters struct {
-    Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-type chirpErrorResponse struct {
-    Error string `json:"error"`
-}
 
 type Chirp struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	UserID    uuid.UUID `json:"user_id"`
 	Body      string    `json:"body"`
-	UserID 	  uuid.UUID `json:"user_id"`
 }
 
-func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
+	}
+
 	decoder := json.NewDecoder(r.Body)
-	params := chirpParameters{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        respBody := chirpErrorResponse{
-            Error: "Couldn't decode parameters",
-        }
-        data, err := json.Marshal(respBody)
-        if err != nil {
-            return
-        }
-        w.Write(data)
-        return
-    }
-	cleanChirp := cleanChirp(params.Body)
-	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{
-		Body: cleanChirp,
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	cleaned, err := validateChirp(params.Body)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		return
+	}
+
+	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   cleaned,
 		UserID: params.UserID,
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		respBody := chirpErrorResponse{
-			Error: "Couldn't create chirp",
-		}
-		data, err := json.Marshal(respBody)
-		if err != nil {
-			return
-		}
-		w.Write(data)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	respBody := Chirp{
-		ID: chirp.ID,
+
+	respondWithJSON(w, http.StatusCreated, Chirp{
+		ID:        chirp.ID,
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
-		Body: chirp.Body,
-		UserID: chirp.UserID,
-	}
-	data, err := json.Marshal(respBody)
-	if err != nil {
-		return
-	}
-	w.Write(data)
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	})
 }
 
-func cleanChirp(chirp string) string {
-    words := strings.Split(chirp, " ")
-    for idx, word := range words {
-        if slices.Contains(profane, strings.ToLower(word)){
-            words[idx] = "****"
-        } 
-    }
-    return strings.Join(words, " ")
+func validateChirp(body string) (string, error) {
+	const maxChirpLength = 140
+	if len(body) > maxChirpLength {
+		return "", errors.New("Chirp is too long")
+	}
+
+	badWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
+	}
+	cleaned := getCleanedBody(body, badWords)
+	return cleaned, nil
+}
+
+func getCleanedBody(body string, badWords map[string]struct{}) string {
+	words := strings.Split(body, " ")
+	for i, word := range words {
+		loweredWord := strings.ToLower(word)
+		if _, ok := badWords[loweredWord]; ok {
+			words[i] = "****"
+		}
+	}
+	cleaned := strings.Join(words, " ")
+	return cleaned
 }

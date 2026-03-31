@@ -6,7 +6,7 @@ import (
 )
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	err := cfg.dbQueries.DeleteUsers(r.Context())
+	err := cfg.db.DeleteUsers(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Failed to reset users: %s", err)))

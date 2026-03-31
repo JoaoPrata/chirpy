@@ -14,53 +14,34 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
-type userParameters struct {
-    Email string `json:"email"`
-}
-
-type userErrorResponse struct {
-    Error string `json:"error"`
-}
-
 func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email string `json:"email"`
+	}
+	type response struct {
+		User
+	}
+
 	decoder := json.NewDecoder(r.Body)
-	params := userParameters{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        respBody := userErrorResponse{
-            Error: "Couldn't decode parameters",
-        }
-        data, err := json.Marshal(respBody)
-        if err != nil {
-            return
-        }
-        w.Write(data)
-        return
-    }
-	user, err := cfg.dbQueries.CreateUser(r.Context(), params.Email)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		respBody := userErrorResponse{
-            Error: "Couldn't create user",
-        }
-        data, err := json.Marshal(respBody)
-        if err != nil {
-            return
-        }
-        w.Write(data)
-        return
-	}
-	userResp := User{
-		ID: user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email: user.Email,
-	}
-	data, err := json.Marshal(userResp)
-	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(data)
+
+	user, err := cfg.db.CreateUser(r.Context(), params.Email)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+	})
 }
