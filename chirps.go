@@ -57,6 +57,15 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	data, err := cfg.db.GetChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could't get chirps", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, mapChirps(data))
+}
+
 func validateChirp(body string) (string, error) {
 	const maxChirpLength = 140
 	if len(body) > maxChirpLength {
@@ -82,4 +91,17 @@ func getCleanedBody(body string, badWords map[string]struct{}) string {
 	}
 	cleaned := strings.Join(words, " ")
 	return cleaned
+}
+
+func mapChirps(data []database.Chirp) (chirps []Chirp) {
+	for _, chirp := range data {
+		chirps = append(chirps, Chirp{
+			ID: chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			UserID: chirp.UserID,
+			Body: chirp.Body,
+		})
+	}
+	return chirps
 }
