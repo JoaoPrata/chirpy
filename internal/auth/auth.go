@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"strings"
+	"net/http"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
@@ -76,4 +78,12 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 	return id, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	bearerToken := headers.Get("Authorization")
+	if bearerToken == "" {
+		return "", errors.New("authorization header dosen't exist")
+	}
+	return strings.Replace(bearerToken, "Bearer ", "", 1), nil
 }

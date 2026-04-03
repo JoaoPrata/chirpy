@@ -3,11 +3,16 @@ package main
 import (
 	"net/http"
 	"time"
+	"fmt"
 	"encoding/json"
 	"github.com/google/uuid"
 
 	"github.com/JoaoPrata/chirpy/internal/auth"
 	"github.com/JoaoPrata/chirpy/internal/database"
+)
+
+const (
+	expiresInSecondsDefault int = 3600
 )
 
 type User struct {
@@ -62,9 +67,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
 		Password string `json:"password"`
+		ExpiresInSeconds int `josn:"expires_in_seconds"`
 	}
 	type response struct {
 		User
+		Token string `json:"token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -89,6 +96,22 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithJSON(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
+
+	var expiresIn int = expiresInSecondsDefault
+	if params.ExpiresInSeconds != 0 && params.ExpiresInSeconds < expiresInSecondsDefault {
+		expiresIn = params.ExpiresInSeconds
+	}
+	tokenDuration, err := time.ParseDuration(fmt.Sprintf("%ds", expiresIn))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't generate token", err)
+		return
+	}
+	token, err := auth.MakeJWT(user.ID, cfg.tokenSecret, tokenDuration)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't generate token", err)
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
 			ID:        user.ID,
@@ -96,5 +119,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt: user.UpdatedAt,
 			Email:     user.Email,
 		},
+		Token: token,
 	})
 }
