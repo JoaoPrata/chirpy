@@ -1,6 +1,6 @@
 package main
 
-import (
+import(
 	"net/http"
 	"time"
 	"fmt"
@@ -11,63 +11,15 @@ import (
 	"github.com/JoaoPrata/chirpy/internal/database"
 )
 
-type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-}
-
-func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Email string `json:"email"`
-		Password string `json:"password"`
-	}
-	type response struct {
-		User
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
-		return
-	}
-
-	hashedPass, err := auth.HashPassword(params.Password)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
-		return
-	}
-	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
-		Email: params.Email,
-		HashedPassword: hashedPass,
-	})
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
-		return
-	}
-
-	respondWithJSON(w, http.StatusCreated, response{
-		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
-		},
-	})
-}
-
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
 		Password string `json:"password"`
-		ExpiresInSeconds int `josn:"expires_in_seconds"`
 	}
 	type response struct {
 		User
 		Token string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -93,11 +45,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var expiresIn int = expiresInSecondsDefault
-	if params.ExpiresInSeconds != 0 && params.ExpiresInSeconds < expiresInSecondsDefault {
-		expiresIn = params.ExpiresInSeconds
-	}
-	tokenDuration, err := time.ParseDuration(fmt.Sprintf("%ds", expiresIn))
+	tokenDuration, err := time.ParseDuration("1h")
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't generate token", err)
 		return
@@ -105,6 +53,23 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.MakeJWT(user.ID, cfg.tokenSecret, tokenDuration)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't generate token", err)
+		return
+	}
+	refreshToken := auth.MakeRefreshToken()
+	refreshDuration, err := time.ParseDuration("1440h")
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't generate refresh token", err)
+		return
+	}
+	refreshExpiration := time.Now().UTC().Add(refreshDuration)
+
+	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token: refreshToken,
+		UserID: user.ID,
+		ExpiresAt: refreshExpiration
+	})
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't save refresh token", err)
 		return
 	}
 
@@ -116,5 +81,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			Email:     user.Email,
 		},
 		Token: token,
+		RefreshToken: refreshToken,
 	})
 }

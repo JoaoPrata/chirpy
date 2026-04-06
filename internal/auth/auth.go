@@ -6,6 +6,8 @@ import (
 	"time"
 	"strings"
 	"net/http"
+	"crypto/rand"
+	"encoding/hex"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
@@ -86,4 +88,10 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", errors.New("authorization header dosen't exist")
 	}
 	return strings.Replace(bearerToken, "Bearer ", "", 1), nil
+}
+
+func MakeRefreshToken() string {
+	tokenData := byte[]{}
+	_ = rand.Read(tokenData)
+	return hex.EncodeToString(tokenData)
 }
