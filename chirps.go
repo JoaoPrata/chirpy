@@ -30,8 +30,8 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		respondWithError(w, http.StatusUnauthorized, "Couldn't get token", err)
 		return
 	}
-
 	userID, err := auth.ValidateJWT(token, cfg.tokenSecret)
+
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
 		return

@@ -3,9 +3,7 @@ package main
 import(
 	"net/http"
 	"time"
-	"fmt"
 	"encoding/json"
-	"github.com/google/uuid"
 
 	"github.com/JoaoPrata/chirpy/internal/auth"
 	"github.com/JoaoPrata/chirpy/internal/database"
@@ -66,7 +64,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
 		Token: refreshToken,
 		UserID: user.ID,
-		ExpiresAt: refreshExpiration
+		ExpiresAt: refreshExpiration,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't save refresh token", err)

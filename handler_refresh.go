@@ -2,6 +2,7 @@ package main
 
 import(
 	"time"
+	"net/http"
 
 	"github.com/JoaoPrata/chirpy/internal/auth"
 )
@@ -21,11 +22,11 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't get refresh token", err)
 		return
 	}
-	if dbRefreshToken.ExpiresAt > time.Now().UTC() {
+	if time.Now().UTC().After(dbRefreshToken.ExpiresAt) {
 		respondWithJSON(w, http.StatusUnauthorized, "Token has expired")
 		return
 	}
-	if dbRefreshToken.RevokedAt != nil {
+	if dbRefreshToken.RevokedAt.Valid {
 		respondWithJSON(w, http.StatusUnauthorized, "Token is revoked")
 		return
 	}
