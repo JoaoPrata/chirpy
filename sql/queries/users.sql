@@ -20,3 +20,9 @@ WHERE email = $1;
 SELECT u.* FROM users u
 INNER JOIN refresh_tokens t ON u.id = t.user_id
 WHERE t.token = $1;
+
+-- name: UpdateUser :one
+UPDATE users
+SET email = $1, hashed_password = $2, updated_at = NOW()
+WHERE id = $3
+RETURNING *;
