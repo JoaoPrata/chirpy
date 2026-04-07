@@ -34,37 +34,21 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	validPass, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't validate password", err)
-		return
-	}
-	if !validPass {
-		respondWithJSON(w, http.StatusUnauthorized, "Incorrect email or password")
+	if err != nil || !validPass{
+		respondWithError(w, http.StatusInternalServerError, "Incorrect email or password", err)
 		return
 	}
 
-	tokenDuration, err := time.ParseDuration("1h")
+	accessToken, err := auth.MakeJWT(user.ID, cfg.tokenSecret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't generate token", err)
-		return
-	}
-	token, err := auth.MakeJWT(user.ID, cfg.tokenSecret, tokenDuration)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't generate token", err)
+		respondWithError(w, http.StatusUnauthorized, "Couldn't create access JWT", err)
 		return
 	}
 	refreshToken := auth.MakeRefreshToken()
-	refreshDuration, err := time.ParseDuration("1440h")
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't generate refresh token", err)
-		return
-	}
-	refreshExpiration := time.Now().UTC().Add(refreshDuration)
-
 	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
 		Token: refreshToken,
 		UserID: user.ID,
-		ExpiresAt: refreshExpiration,
+		ExpiresAt: time.Now().UTC().Add(time.Hour * 24 * 60),
 	})
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't save refresh token", err)
@@ -78,7 +62,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt: user.UpdatedAt,
 			Email:     user.Email,
 		},
-		Token: token,
+		Token: accessToken,
 		RefreshToken: refreshToken,
 	})
 }

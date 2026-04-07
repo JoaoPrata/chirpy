@@ -10,10 +10,9 @@ import(
 )
 
 func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
-
 	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get refresh token from header", err)
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find token", err)
 		return
 	}
 
@@ -25,7 +24,7 @@ func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Couldn't revoke refresh token", err)
+		respondWithError(w, http.StatusNotFound, "Couldn't revoke session", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
