@@ -11,10 +11,11 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -50,15 +51,16 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, http.StatusCreated, response{
 		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
+			ID:         user.ID,
+			CreatedAt:  user.CreatedAt,
+			UpdatedAt:  user.UpdatedAt,
+			Email:      user.Email,
+			IsChirpyRed: user.IsChirpyRed,
 		},
 	})
 }
 
-func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerUpdateUserCredentials(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Password string `json:"password"`
 		Email 	 string  `json:"email"`
@@ -92,7 +94,7 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := cfg.db.UpdateUser(r.Context(), database.UpdateUserParams{
+	user, err := cfg.db.UpdateUserCredentials(r.Context(), database.UpdateUserCredentialsParams{
 		ID: userID,
 		Email: params.Email,
 		HashedPassword: hashedPass,
@@ -104,10 +106,11 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
+			ID:         user.ID,
+			CreatedAt:  user.CreatedAt,
+			UpdatedAt:  user.UpdatedAt,
+			Email:      user.Email,
+			IsChirpyRed: user.IsChirpyRed,
 		},
 	})
 }
