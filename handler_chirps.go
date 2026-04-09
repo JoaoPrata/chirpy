@@ -70,7 +70,20 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	data, err := cfg.db.GetChirps(r.Context())
+	id := r.URL.Query().Get("author_id")
+	sort := r.URL.Query().Get("sort")
+	var data []database.Chirp
+	var err error
+	if id != "" {
+		userID, err := uuid.Parse(id)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't parse author id", err)
+			return
+		}
+		data, err = cfg.db.GetUserChirps(r.Context(), userID)
+	} else {
+		data, err = cfg.db.GetChirps(r.Context())
+	}
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
 		return

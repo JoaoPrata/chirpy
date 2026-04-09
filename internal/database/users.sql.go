@@ -54,6 +54,7 @@ func (q *Queries) DeleteUsers(ctx context.Context) error {
 const getUser = `-- name: GetUser :one
 SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red FROM users
 WHERE email = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
@@ -74,6 +75,7 @@ const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
 SELECT u.id, u.created_at, u.updated_at, u.email, u.hashed_password, u.is_chirpy_red FROM users u
 INNER JOIN refresh_tokens t ON u.id = t.user_id
 WHERE t.token = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (User, error) {

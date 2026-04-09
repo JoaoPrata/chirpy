@@ -85,7 +85,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 func GetBearerToken(headers http.Header) (string, error) {
 	bearerToken := headers.Get("Authorization")
 	if bearerToken == "" {
-		return "", errors.New("authorization header dosen't exist")
+		return "", errors.New("Authorization header dosen't exist")
 	}
 	return strings.Replace(bearerToken, "Bearer ", "", 1), nil
 }
@@ -94,4 +94,12 @@ func MakeRefreshToken() string {
 	token := make([]byte, 32)
 	_, _ = rand.Read(token)
 	return hex.EncodeToString(token)
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	apiKey := headers.Get("Authorization")
+	if apiKey == "" {
+		return "", errors.New("Authorization header dosen't exist")
+	}
+	return strings.Replace(apiKey, "ApiKey ", "", 1), nil
 }
