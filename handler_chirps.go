@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"sort"
 
 	"github.com/JoaoPrata/chirpy/internal/database"
 	"github.com/JoaoPrata/chirpy/internal/auth"
@@ -71,7 +72,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("author_id")
-	sort := r.URL.Query().Get("sort")
+	sorting := r.URL.Query().Get("sort")
 	var data []database.Chirp
 	var err error
 	if id != "" {
@@ -88,7 +89,13 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, mapChirps(data))
+	chirps := mapChirps(data)
+	if sorting == "desc" {
+		sort.Slice(
+			chirps, 
+			func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt) })
+	}
+	respondWithJSON(w, http.StatusOK, chirps)
 }
 
 func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
